@@ -36,7 +36,34 @@
   #carnets-print{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}`;
 
   const E = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const gradeTxt = s => [s.grade, s.section].filter(Boolean).join(' ');
+
+  /* ---------- nivel, grado y sección ----------
+   * En el panel el grado se guarda así:
+   *   Inicial    -> "3 años"        (nivel en students.level)
+   *   Primaria   -> "6° Primaria"
+   *   Secundaria -> "5° Secundaria"
+   * y la sección en students.section. Aquí se quita el nivel repetido del grado.
+   */
+  const LEVELS = /\b(inicial|primaria|secundaria)\b/i;
+  const cleanGrade = g => String(g ?? '').replace(/\b(inicial|primaria|secundaria)\b/gi, '').replace(/\s+/g, ' ').trim();
+  const levelOf = s => {
+    const raw = String(s.level || '').trim() || (String(s.grade || '').match(LEVELS) || [])[1] || '';
+    return raw ? raw[0].toUpperCase() + raw.slice(1).toLowerCase() : '';
+  };
+
+  // Texto del salón (lista de "Alumno" y "Salón completo"): "Secundaria 5° G"
+  const gradeTxt = s => [levelOf(s), cleanGrade(s.grade), s.section].filter(Boolean).join(' ');
+
+  // Texto que se imprime en el carnet:
+  //   Inicial · 3 años · Sección A   |   Primaria · 6° E   |   Secundaria · 5° G
+  const carnetGrade = s => {
+    const lv = levelOf(s);
+    let g = cleanGrade(s.grade);
+    if (lv === 'Inicial' && /^\d+$/.test(g)) g += ' años';
+    const sec = lv === 'Inicial' ? (s.section ? 'Sección ' + s.section : '') : (s.section || '');
+    const rest = [g, sec].filter(Boolean).join(lv === 'Inicial' ? ' · ' : ' ');
+    return [lv, rest].filter(Boolean).join(' · ');
+  };
 
   function carnetHTML(st, id) {
     const ini = String(st.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -52,7 +79,7 @@
       <div class="bd">
         <div class="lf">${foto}<small>Carnet personal<br>e intransferible</small></div>
         <div class="rt">
-          <div><div class="nm">${E(st.name)}</div><div class="gr">${E(st.level ? st.level + ' · ' : '')}${E(gradeTxt(st))}</div></div>
+          <div><div class="nm">${E(st.name)}</div><div class="gr">${E(carnetGrade(st))}</div></div>
           <div class="qr" id="${id}"></div>
         </div>
       </div>
@@ -106,7 +133,12 @@
       const st = document.createElement('style'); st.id = 'carnets-css'; st.textContent = css; document.head.appendChild(st);
     }
 
-    const groups = [...new Set(students.map(gradeTxt).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    // Salones tomados de los alumnos registrados (las secciones nuevas aparecen solas)
+    const groups = [...new Set(students.map(gradeTxt).filter(Boolean))].sort((a, b) => {
+      const order = ['Inicial', 'Primaria', 'Secundaria'];
+      const la = order.findIndex(n => a.startsWith(n)), lb = order.findIndex(n => b.startsWith(n));
+      return (la < 0 ? 9 : la) - (lb < 0 ? 9 : lb) || a.localeCompare(b, 'es', { numeric: true });
+    });
 
     root.innerHTML = `
       <h3>Carnets QR</h3>
