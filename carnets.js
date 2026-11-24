@@ -1,13 +1,5 @@
 /* JAPAM · Carnets QR  (se integra solo al panel; solo administración)
  *
- * Instalación: guarda este archivo junto a index.html y, en index.html, reemplaza el final
- *     </script></body></html>
- * por
- *     </script>
- *     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
- *     <script src="carnets.js"></script>
- *     </body></html>
- *
  * Requiere en Supabase: Edge Function "card-api" (acciones issue / revoke)
  * y, opcional, la columna students.photo_url.
  */
